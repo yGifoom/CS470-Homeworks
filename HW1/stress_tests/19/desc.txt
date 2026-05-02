@@ -1,0 +1,1 @@
+Deterministic pseudo-random long workload (~1000 inst) with guaranteed non-zero divisors.

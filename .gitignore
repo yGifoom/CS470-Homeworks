@@ -1,0 +1,6 @@
+HW1/given_tests/*
+HW2/given_tests/*
+*.zip
+
+HW1/__pycache__/ 
+HW2/__pycache__/ 

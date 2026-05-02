@@ -1,0 +1,1 @@
+Weird exception mix with multiple divide-by-zero candidates to validate oldest-fault behavior.

@@ -1,0 +1,1 @@
+Arithmetic identity and zero-edge behavior across all ALU op families (no exception).

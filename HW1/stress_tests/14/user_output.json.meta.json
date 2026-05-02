@@ -1,0 +1,7 @@
+{
+    "instruction_count": 560,
+    "estimated_cycles": 427,
+    "actual_cycles": 570,
+    "delta_cycles": 143,
+    "estimate_model": "idealized 4-wide scoreboard pipeline"
+}
