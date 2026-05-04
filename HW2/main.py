@@ -1,51 +1,31 @@
-import src.simulator.vliw470 as vl
-import argparse
 import json
-import os
+import sys
 
 from math import ceil
 
 from src.instructions import InputInstructions
+from src.instructions import Instruction
 from src.dep_table import build_dep_table
 from src.dep_table import DependancyTableRow
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument("input", type=argparse.FileType("r"), help="input json file")
-
-parser.add_argument("output", action="store", help="The scheduled intructions.")
-
-parser.add_argument(
-    "-d", "--debug", action="store_true", help="print debug information"
-)
-args = parser.parse_args()
-
-# prepare output file names
-output = args.output
-output_pip = args.output[: args.output.find(".")] + "_pip" + ".json"
-
-# check if output files path exists
-for filename in (output, output_pip):
-    if filename.find("/") != -1:
-        path = filename[: filename.rfind("/")]
-        if not os.path.exists(path):
-            os.makedirs(path)
-            print(f"Created directory: {path}")
+from src.schedule import normal_schedule
 
 
-# debug print function
-def print_debug(s: str = ""):
-    if args.debug:
-        print(s)
+def main() -> None:
+    input_filename: str = sys.argv[1]
+    output_filename: str = sys.argv[2]
+    output_filename_pip: str = sys.argv[3]
 
+    with open(input_filename) as infile:
+        input_data = infile.read()
 
-if __name__ == "__main__":
+    # Terminology:
+    #   Bundle - one row in the schedule
+
     # 0 load and parse input instructions
-    input_instructions: InputInstructions = InputInstructions(json.load(args.input))
+    input_instructions: InputInstructions = InputInstructions(json.load(input_data))
 
     # 1 make schedule
-    schedule = list()
-    schedule_pip = list()
+    schedule_pip: list[list[str]] = []
 
     # 1.1 lowerbound II
     II = max(
@@ -58,6 +38,24 @@ if __name__ == "__main__":
     # 1.2 make dependency table
     dep_table: list[DependancyTableRow] = build_dep_table(input_instructions)
 
+    # == Section 3.2. & 3.2.1 Scheduling with the loop Instruction ==
+    # Essentially we assume that we will solve WAR and WAW dependencies after this stage,
+    # and only care about RAW dependencies.
+    # We perform the scheduling simply now, knowing that register renaming will save us later.
+    schedule: list[
+        tuple[Instruction, Instruction, Instruction, Instruction, Instruction]
+    ] = normal_schedule(input_instructions, dep_table, II)
+
+    # == Section 3.2.2 Scheduling With loop.pip ==
+    # TODO
+    schedule_pip: list[
+        tuple[Instruction, Instruction, Instruction, Instruction, Instruction]
+    ] = pip_schedule(input_instructions, dep_table, II)
+
+    # 3.3 Register Allocation
+    # == Section 3.3.1 Register Allocation with the loop Instruction ==
+
+
     # TODO: 1.x3 pip scheduling
     # 1.3 increase II until schedulable
 
@@ -67,9 +65,13 @@ if __name__ == "__main__":
 
     # 1.x5 pip loop preparing
 
-    # 2 save schedules to output file
-    for filename in (output, output_pip):
-        with open(filename, "w") as out:
-            json.dump(schedule, out, indent=4)
+    # Save schedules to output file
+    with open(output_filename, "w") as out:
+        json.dump(schedule, out, indent=4)
 
-    pass
+    with open(output_filename_pip, "w") as out_pip:
+        json.dump(schedule_pip, out_pip, indent=4)
+
+
+if __name__ == "__main__":
+    main()

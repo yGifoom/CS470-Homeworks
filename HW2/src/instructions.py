@@ -28,7 +28,34 @@ class Instruction:
     branch: None | int
     lc_ec: None | str
     pred_reg: None | str
+    # The instruction string in the new schedule
+    full_str: str
+    # If this instruction starts executing on pc `n`, it's result will
+    # be available on `n + latency`
+    latency: int
+    # The position in the new schedule
+    new_pc: int = -1
+    # in which execution unit are we
+    bundle_idx: int = -1
 
+    def to_string(self) -> str:
+        """The instrucion string in the new schedule (the output)"""
+        return self.opcode + "nya"
+        
+
+def get_nop() -> Instruction:
+    return Instruction(
+        opcode="nop",
+        type="??",
+        dest=None,
+        ops=[],
+        imm=None,
+        branch=None,
+        lc_ec=None,
+        pred_reg=None,
+        full_str="nop",
+        latency=1,
+    )
 
 class InputInstructions:
     def __init__(self, instructions: list[str]) -> None:
@@ -53,7 +80,7 @@ class InputInstructions:
             if info["opcode"] == "nop":
                 continue
 
-            instr: Instruction = self.separate_rename_ops(info)
+            instr: Instruction = self.separate_rename_ops(info, i)
             if instr.type == "branch":
                 assert instr.branch is not None
                 assert instr.branch < pc, (
@@ -68,8 +95,7 @@ class InputInstructions:
 
         self.bbs.append(pc)
 
-    def separate_rename_ops(self, info: dict) -> Instruction:
-
+    def separate_rename_ops(self, info: dict, full_str: str) -> Instruction:
         regs: list[int] = [int(op[1:]) for op in info["operands"] if op.startswith("x")]
 
         non_regs: list[str] = [op for op in info["operands"] if not op.startswith("x")]
@@ -110,6 +136,8 @@ class InputInstructions:
                 branch=None,
                 lc_ec=lc_ec,
                 pred_reg=pred_reg,
+                full_str=full_str,
+                latency=1,
             )
 
         elif info["opcode"] in ("mulu"):
@@ -124,6 +152,9 @@ class InputInstructions:
                 branch=None,
                 lc_ec=None,
                 pred_reg=None,
+                full_str=full_str,
+                # The only exception!
+                latency=3,
             )
 
         elif info["opcode"] in ("ld", "st"):
@@ -155,6 +186,8 @@ class InputInstructions:
                 branch=None,
                 lc_ec=None,
                 pred_reg=None,
+                full_str=full_str,
+                latency=1,
             )
 
         elif info["opcode"] in ("loop", "loop.pip"):
@@ -169,6 +202,8 @@ class InputInstructions:
                 branch=int(non_regs[0], 0),
                 lc_ec=None,
                 pred_reg=None,
+                full_str=full_str,
+                latency=1
             )
 
         else:
