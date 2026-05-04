@@ -28,8 +28,6 @@ class Instruction:
     branch: None | int
     lc_ec: None | str
     pred_reg: None | str
-    # The instruction string in the new schedule
-    full_str: str
     # If this instruction starts executing on pc `n`, it's result will
     # be available on `n + latency`
     latency: int
@@ -40,6 +38,7 @@ class Instruction:
 
     def to_string(self) -> str:
         """The instrucion string in the new schedule (the output)"""
+        # FIXME: to implement
         return self.opcode + "nya"
         
 
@@ -53,7 +52,6 @@ def get_nop() -> Instruction:
         branch=None,
         lc_ec=None,
         pred_reg=None,
-        full_str="nop",
         latency=1,
     )
 
@@ -80,7 +78,7 @@ class InputInstructions:
             if info["opcode"] == "nop":
                 continue
 
-            instr: Instruction = self.separate_rename_ops(info, i)
+            instr: Instruction = self.separate_rename_ops(info)
             if instr.type == "branch":
                 assert instr.branch is not None
                 assert instr.branch < pc, (
@@ -95,7 +93,7 @@ class InputInstructions:
 
         self.bbs.append(pc)
 
-    def separate_rename_ops(self, info: dict, full_str: str) -> Instruction:
+    def separate_rename_ops(self, info: dict) -> Instruction:
         regs: list[int] = [int(op[1:]) for op in info["operands"] if op.startswith("x")]
 
         non_regs: list[str] = [op for op in info["operands"] if not op.startswith("x")]
@@ -136,7 +134,6 @@ class InputInstructions:
                 branch=None,
                 lc_ec=lc_ec,
                 pred_reg=pred_reg,
-                full_str=full_str,
                 latency=1,
             )
 
@@ -152,7 +149,6 @@ class InputInstructions:
                 branch=None,
                 lc_ec=None,
                 pred_reg=None,
-                full_str=full_str,
                 # The only exception!
                 latency=3,
             )
@@ -186,7 +182,6 @@ class InputInstructions:
                 branch=None,
                 lc_ec=None,
                 pred_reg=None,
-                full_str=full_str,
                 latency=1,
             )
 
@@ -202,7 +197,6 @@ class InputInstructions:
                 branch=int(non_regs[0], 0),
                 lc_ec=None,
                 pred_reg=None,
-                full_str=full_str,
                 latency=1
             )
 

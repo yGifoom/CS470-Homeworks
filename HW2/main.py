@@ -8,6 +8,7 @@ from src.instructions import Instruction
 from src.dep_table import build_dep_table
 from src.dep_table import DependancyTableRow
 from src.schedule import normal_schedule
+from src.schedule import pip_schedule
 
 
 def main() -> None:
@@ -23,9 +24,6 @@ def main() -> None:
 
     # 0 load and parse input instructions
     input_instructions: InputInstructions = InputInstructions(json.load(input_data))
-
-    # 1 make schedule
-    schedule_pip: list[list[str]] = []
 
     # 1.1 lowerbound II
     II = max(
