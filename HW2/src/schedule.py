@@ -97,7 +97,6 @@ def attempt_normal_schedule(
         nop.new_pc = i
 
         sched_row = [nop, nop, nop, nop, nop]
-        
 
         # Iterate over all instr's to see if one fits here
         for instr in instructions:

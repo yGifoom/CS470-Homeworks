@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from instructions import InputInstructions
-from instructions import Instruction
+from .instructions import InputInstructions
+from .instructions import Instruction
 from pathlib import Path
 
 

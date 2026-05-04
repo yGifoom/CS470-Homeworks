@@ -23,7 +23,7 @@ def main() -> None:
     #   Bundle - one row in the schedule
 
     # 0 load and parse input instructions
-    input_instructions: InputInstructions = InputInstructions(json.load(input_data))
+    input_instructions: InputInstructions = InputInstructions(json.loads(input_data))
 
     # 1.1 lowerbound II
     II = max(
