@@ -1,6 +1,9 @@
+from dataclasses import dataclass
+
+
 def parse(i: str) -> dict:
     info = i.split()
-    info[0] = info[0].strip()
+    opcode = info[0].strip()
 
     operands: list[str] = []
 
@@ -12,24 +15,36 @@ def parse(i: str) -> dict:
             operands.append(item.strip())
 
     # 1 operand for jump, 2 for mov, load/store 3 for rest
-    return {"opcode": info[0].strip(), "operands": operands}
+    return {"opcode": opcode, "operands": operands}
 
 
-class Instructions:
+@dataclass
+class Instruction:
+    opcode: str
+    type: str
+    dest: int | None
+    ops: list[int]
+    imm: None | int
+    branch: None | int
+    lc_ec: None | str
+    pred_reg: None | str
+
+
+class InputInstructions:
     def __init__(self, instructions: list[str]) -> None:
         # how many instructions of each type
         self.Ni = {"alu": 0, "mul": 0, "mem": 0, "branch": 0}
 
         # how many functional units of each type
         self.Ui = {"alu": 2, "mul": 1, "mem": 1, "branch": 1}
-        self.bbs = [
-            0
-        ]  # basic block end pc indices # after init bbs is either [0, final_pc] or [0, loop_jump, loop_pc, final_pc]
-        self.instructions = list()
+        # basic block end pc indices
+        # after init bbs is either [0, final_pc] or [0, loop_jump, loop_pc, final_pc]
+        self.bbs: list[int] = [0]
+        self.instructions: list[Instruction] = []
 
-        pc = 0
+        pc: int = 0
         for i in instructions:
-            if type(i) != str:
+            if isinstance(i, str):
                 raise ValueError("Instructions must be a list of strings.")
 
             info = parse(i)  # opcode, operands
@@ -38,12 +53,13 @@ class Instructions:
             if info["opcode"] == "nop":
                 continue
 
-            instr = self.separate_rename_ops(info)
-            if instr["type"] == "branch":
-                assert instr["branch"] < pc, (
+            instr: Instruction = self.separate_rename_ops(info)
+            if instr.type == "branch":
+                assert instr.branch is not None
+                assert instr.branch < pc, (
                     "Branch target must be a previous instruction."
                 )
-                self.bbs.extend([instr["branch"], pc])  # (label, pc)
+                self.bbs.extend([instr.branch, pc])  # (label, pc)
 
             self.instructions.append(
                 instr
@@ -52,11 +68,11 @@ class Instructions:
 
         self.bbs.append(pc)
 
-    def separate_rename_ops(self, info: dict) -> dict:
+    def separate_rename_ops(self, info: dict) -> Instruction:
 
-        regs = [int(op[1:]) for op in info["operands"] if op.startswith("x")]
+        regs: list[int] = [int(op[1:]) for op in info["operands"] if op.startswith("x")]
 
-        non_regs = [op for op in info["operands"] if not op.startswith("x")]
+        non_regs: list[str] = [op for op in info["operands"] if not op.startswith("x")]
 
         if info["opcode"] in ("add", "addi", "sub", "mov"):
             self.Ni["alu"] += 1
@@ -85,30 +101,30 @@ class Instructions:
                 lc_ec = None
                 pred_reg = None
 
-            return {
-                "opcode": info["opcode"],
-                "type": "alu",
-                "dest": dest,
-                "ops": regs[1:],
-                "imm": int(imm, 0) if imm is not None else None,
-                "branch": None,
-                "lc_ec": lc_ec,
-                "pred_reg": pred_reg,
-            }
+            return Instruction(
+                opcode=info["opcode"],
+                type="alu",
+                dest=dest,
+                ops=regs[1:],
+                imm=int(imm, 0) if imm is not None else None,
+                branch=None,
+                lc_ec=lc_ec,
+                pred_reg=pred_reg,
+            )
 
         elif info["opcode"] in ("mulu"):
             self.Ni["mul"] += 1
 
-            return {
-                "opcode": info["opcode"],
-                "type": "mul",
-                "dest": regs[0],
-                "ops": regs[1:],
-                "imm": None,
-                "branch": None,
-                "lc_ec": None,
-                "pred_reg": None,
-            }
+            return Instruction(
+                opcode=info["opcode"],
+                type="mul",
+                dest=regs[0],
+                ops=regs[1:],
+                imm=None,
+                branch=None,
+                lc_ec=None,
+                pred_reg=None,
+            )
 
         elif info["opcode"] in ("ld", "st"):
             self.Ni["mem"] += 1
@@ -130,30 +146,31 @@ class Instructions:
             ops = [mem_reg] if info["opcode"] == "ld" else [mem_reg] + regs
             dest = regs[0] if info["opcode"] == "ld" else None
 
-            return {
-                "opcode": info["opcode"],
-                "type": "mem",
-                "dest": dest,
-                "ops": list(map(int, ops)),
-                "imm": int(imm, 0) if imm is not None else None,
-                "branch": None,
-                "lc_ec": None,
-                "pred_reg": None,
-            }
+            return Instruction(
+                opcode=info["opcode"],
+                type="mem",
+                dest=dest,
+                ops=list(map(int, ops)),
+                imm=int(imm, 0) if imm is not None else None,
+                branch=None,
+                lc_ec=None,
+                pred_reg=None,
+            )
 
         elif info["opcode"] in ("loop", "loop.pip"):
             self.Ni["branch"] += 1
 
-            return {
-                "opcode": info["opcode"],
-                "type": "branch",
-                "dest": None,
-                "ops": list(),
-                "imm": None,
-                "branch": int(non_regs[0], 0),
-                "lc_ec": None,
-                "pred_reg": None,
-            }
+            return Instruction(
+                opcode=info["opcode"],
+                type="branch",
+                dest=None,
+                ops=list(),
+                imm=None,
+                branch=int(non_regs[0], 0),
+                lc_ec=None,
+                pred_reg=None,
+            )
+
         else:
             raise ValueError(f"Unsupported opcode: {info['opcode']}")
 
@@ -165,7 +182,7 @@ if __name__ == "__main__":
     with open(
         "/home/ygifoom/epfl/aa/CS470-Homeworks/HW2/given_tests/09/input.json", "r"
     ) as f:
-        instrs = Instructions(json.load(f))
+        instrs = InputInstructions(json.load(f))
 
     for instr in instrs.instructions:
         print(instr)

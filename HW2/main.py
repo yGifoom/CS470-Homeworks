@@ -5,8 +5,8 @@ import os
 
 from math import ceil
 
-from src.instructions import Instructions
-from src.dep_table import Dep_table
+from src.instructions import InputInstructions
+from src.dep_table import DepTable
 
 parser = argparse.ArgumentParser()
 
@@ -40,7 +40,7 @@ def print_debug(s: str = ""):
 
 if __name__ == "__main__":
     # 0 load and parse input instructions
-    input_instructions = Instructions(json.load(args.input))
+    input_instructions: InputInstructions = InputInstructions(json.load(args.input))
 
     # 1 make schedule
     schedule = list()
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     )
 
     # 1.2 make dependency table
-    dep_table = Dep_table(input_instructions)
+    dep_table = DepTable(input_instructions)
 
     # TODO: 1.x3 pip scheduling
     # 1.3 increase II until schedulable
