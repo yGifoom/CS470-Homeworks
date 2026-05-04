@@ -59,14 +59,17 @@ def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTable
             )
 
             if bb > 1:
-                latest_producer_of_op = max(
-                    [k for k in producers.get(op, list()) if k < bbs[2]]
-                )
+                producers_of_op = [k for k in producers.get(op, list()) if k < bbs[2]]
+                if producers_of_op:
+                    latest_producer_of_op = max(producers_of_op)
+                else:
+                    continue
+                    
                 print("latest producer of op ", op, " is ", latest_producer_of_op)
                 if latest_producer_of_op < bbs[1]:
                     loop_invariant_dep.append((op, latest_producer_of_op))
 
-            if bb == 2:  # if this is not the first bb, also check for loop-carried deps
+            elif bb == 2:  # if this is not the first bb, also check for loop-carried deps
                 for k in producers.get(op, list()):
                     if (k >= i and k < bbs[2]) or (k < bbs[1]):
                         if (
@@ -74,7 +77,7 @@ def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTable
                         ):  # give pecedence to loop invariant deps
                             interloop_dep.append((op, k))
 
-            if (
+            elif (
                 bb == 3
             ):  # if this is not the first two bbs, also check for post-loop deps
                 # pick the latest dependencies
