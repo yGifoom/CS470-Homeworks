@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 @dataclass
-class DependancyTable:
+class DependancyTableRow:
     instr: int
     dest: int | None
     local_dep: list[tuple[int, int]]
@@ -14,10 +14,10 @@ class DependancyTable:
     post_loop_dep: list[tuple[int, int]]
 
 
-def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTable]:
+def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTableRow]:
     bbs: list[int] = instruction_list.bbs
     inst: list[Instruction] = instruction_list.instructions
-    table: list[DependancyTable] = []
+    table: list[DependancyTableRow] = []
 
     producers: dict[int, list[int]] = {}  # reg -> list of instr indices that produce it
 
@@ -82,7 +82,7 @@ def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTable
                 post_loop_dep.append((op, latest_dep))
 
         table.append(
-            DependancyTable(
+            DependancyTableRow(
                 instr=i,
                 dest=inst[i].dest,
                 local_dep=local_dep,

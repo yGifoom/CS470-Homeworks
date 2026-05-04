@@ -6,7 +6,8 @@ import os
 from math import ceil
 
 from src.instructions import InputInstructions
-from src.dep_table import DepTable
+from src.dep_table import build_dep_table
+from src.dep_table import DependancyTableRow
 
 parser = argparse.ArgumentParser()
 
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     )
 
     # 1.2 make dependency table
-    dep_table = DepTable(input_instructions)
+    dep_table: list[DependancyTableRow] = build_dep_table(input_instructions)
 
     # TODO: 1.x3 pip scheduling
     # 1.3 increase II until schedulable
