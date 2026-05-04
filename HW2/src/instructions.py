@@ -20,6 +20,7 @@ def parse(i: str) -> dict:
 
 @dataclass
 class Instruction:
+    original_pc: int
     opcode: str
     type: str
     dest: int | None
@@ -44,6 +45,7 @@ class Instruction:
 
 def get_nop() -> Instruction:
     return Instruction(
+        original_pc=-1,
         opcode="nop",
         type="??",
         dest=None,
@@ -78,7 +80,7 @@ class InputInstructions:
             if info["opcode"] == "nop":
                 continue
 
-            instr: Instruction = self.separate_rename_ops(info)
+            instr: Instruction = self.separate_rename_ops(info, pc=pc)
             if instr.type == "branch":
                 assert instr.branch is not None
                 assert instr.branch < pc, (
@@ -93,7 +95,7 @@ class InputInstructions:
 
         self.bbs.append(pc)
 
-    def separate_rename_ops(self, info: dict) -> Instruction:
+    def separate_rename_ops(self, info: dict, pc: int) -> Instruction:
         regs: list[int] = [int(op[1:]) for op in info["operands"] if op.startswith("x")]
 
         non_regs: list[str] = [op for op in info["operands"] if not op.startswith("x")]
@@ -126,6 +128,7 @@ class InputInstructions:
                 pred_reg = None
 
             return Instruction(
+                original_pc=pc,
                 opcode=info["opcode"],
                 type="alu",
                 dest=dest,
@@ -141,6 +144,7 @@ class InputInstructions:
             self.Ni["mul"] += 1
 
             return Instruction(
+                original_pc=pc,
                 opcode=info["opcode"],
                 type="mul",
                 dest=regs[0],
@@ -174,6 +178,7 @@ class InputInstructions:
             dest = regs[0] if info["opcode"] == "ld" else None
 
             return Instruction(
+                original_pc=pc,
                 opcode=info["opcode"],
                 type="mem",
                 dest=dest,
@@ -189,6 +194,7 @@ class InputInstructions:
             self.Ni["branch"] += 1
 
             return Instruction(
+                original_pc=pc,
                 opcode=info["opcode"],
                 type="branch",
                 dest=None,
