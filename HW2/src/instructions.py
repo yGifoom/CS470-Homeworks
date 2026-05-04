@@ -69,7 +69,7 @@ class InputInstructions:
 
         pc: int = 0
         for i in instructions:
-            if isinstance(i, str):
+            if not isinstance(i, str):
                 raise ValueError("Instructions must be a list of strings.")
 
             info = parse(i)  # opcode, operands
