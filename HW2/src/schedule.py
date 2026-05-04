@@ -50,22 +50,22 @@ def attempt_normal_schedule(
         while bundle_idx == -1:
             if instr.opcode in ("add", "addi", "sub", "mov"):
                 # ALU 1
-                if not occupied_dict[(new_pc, 0)]:
+                if not occupied_dict.get((new_pc, 0), False):
                     bundle_idx = 0
                 # ALU 2
-                elif not occupied_dict[(new_pc, 1)]:
+                elif not occupied_dict.get((new_pc, 1), False):
                     bundle_idx = 1
             elif instr.opcode == "mulu":
                 # Mult
-                if not occupied_dict[(new_pc, 2)]:
+                if not occupied_dict.get((new_pc, 2), False):
                     bundle_idx = 2
             elif instr.opcode in ("ld", "st"):
                 # Mem
-                if not occupied_dict[(new_pc, 3)]:
+                if not occupied_dict.get((new_pc, 3), False):
                     bundle_idx = 3
             elif instr.opcode in ("loop", "loop.pip"):
                 # Branch
-                if not occupied_dict[(new_pc, 4)]:
+                if not occupied_dict.get((new_pc, 4), False):
                     bundle_idx = 4
             else:
                 raise AssertionError("unknown opcode")
