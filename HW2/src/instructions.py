@@ -38,8 +38,8 @@ class Instruction:
 
     def to_string(self) -> str:
         """The instrucion string in the new schedule (the output)"""
-        # FIXME: to implement
-        return self.opcode + "nya"
+        # FIXME: to implement properly
+        return self.opcode + " " + ", ".join([f"x{op}" for op in self.ops])
         
 
 def get_nop() -> Instruction:

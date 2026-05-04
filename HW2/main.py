@@ -65,10 +65,16 @@ def main() -> None:
 
     # Save schedules to output file
     with open(output_filename, "w") as out:
-        json.dump(schedule, out, indent=4)
+        sched_str: list[tuple[str, str, str, str, str]] = []
+        for row in schedule:
+            sched_str.append((row[0].to_string(), row[1].to_string(), row[2].to_string(), row[3].to_string(), row[4].to_string()))
+        json.dump(sched_str, out, indent=4)
 
     with open(output_filename_pip, "w") as out_pip:
-        json.dump(schedule_pip, out_pip, indent=4)
+        sched_str: list[tuple[str, str, str, str, str]] = []
+        for row in schedule_pip:
+            sched_str.append((row[0].to_string(), row[1].to_string(), row[2].to_string(), row[3].to_string(), row[4].to_string()))
+        json.dump(sched_str, out_pip, indent=4)
 
 
 if __name__ == "__main__":
