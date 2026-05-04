@@ -24,6 +24,8 @@ def attempt_normal_schedule(
         deps: DependancyTableRow = dep_table[i]
         assert deps.instr == i
 
+        print(f"processing instr {i}, {instr.to_string()}")
+
         new_pc: int = 0
 
         for _, depped_instr_idx in deps.local_dep:
@@ -70,8 +72,10 @@ def attempt_normal_schedule(
             else:
                 raise AssertionError("unknown opcode")
 
-            # no free slots in this bundle, go for the next one
-            new_pc += 1
+            if bundle_idx == -1:
+                # no free slots in this bundle, go for the next one
+                print("no free slost!")
+                new_pc += 1
             
         occupied_dict[(new_pc, bundle_idx)] = True
         instr.new_pc = new_pc
@@ -91,6 +95,13 @@ def attempt_normal_schedule(
     for instr in instructions:
         highest_pc = max(highest_pc, instr.new_pc)
 
+    
+    print("==== normal schedule decision ====")
+    for instr in instructions:
+        print("instr: ", instr.to_string(), " @ ", instr.new_pc, instr.bundle_idx)
+    print("==== ======================== ====")
+
+    
     schedule: list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]] = []
     for i in range(highest_pc + 1):
         nop = get_nop()
