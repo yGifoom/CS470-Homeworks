@@ -133,9 +133,10 @@ def rename(
                     n_new_bundles += 1
     
         # reposition the loop instruction so it is at the end of the last bundle of the loop 
-        loop_instr = schedule[loop_end][4]
-        schedule = insert_instr(loop_end + n_new_bundles, 4, loop_instr, schedule)
-        schedule = insert_instr(loop_end, 4, get_nop(), schedule) # replace old loop instruction with nop
+        if n_new_bundles > 0:
+            loop_instr = schedule[loop_end][4]
+            schedule = insert_instr(loop_end + n_new_bundles, 4, loop_instr, schedule)
+            schedule = insert_instr(loop_end, 4, get_nop(), schedule) # replace old loop instruction with nop
     
     return schedule
 
