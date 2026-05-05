@@ -33,7 +33,7 @@ def rename(
     
     
     # step 1: assign to all destination regs a new value and populate a mov instructions with renamed regs
-    used_regs: int = 0
+    used_regs: int = 1  # we start assigning from x1 because x0 is reserved for 0
     pc_to_new_dest: dict[int, int] = dict() # original_pc -> new dest reg
     
     # takes care of anti-dependencies and output dependencies

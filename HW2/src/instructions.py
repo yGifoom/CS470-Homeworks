@@ -40,48 +40,48 @@ class Instruction:
     def to_string(self) -> str:
         """The instrucion string in the new schedule (the output)"""
         if  self.opcode == "nop":
-            return "nop"
+            return " " + "nop"
         
         elif self.opcode in ("add", "sub", "mulu"):
-            return self.opcode + " x" + str(self.dest) + ", " + ", ".join(
+            return " " + self.opcode + " x" + str(self.dest) + ", " + ", ".join(
                 ["x" + str(op) for op in self.ops]
             )
             
         elif self.opcode in ("addi"):
             if self.imm is not None:
-                return self.opcode + " x" + str(self.dest) + ", x" + str(self.ops[0]) + ", " + hex(self.imm)
+                return " " + self.opcode + " x" + str(self.dest) + ", x" + str(self.ops[0]) + ", " + str(self.imm)
             raise ValueError("Immediate value must be provided for addi instructions.")
         
         elif self.opcode in ("mov"):
             if self.imm is not None and self.pred_reg is not None:
-                return self.opcode + " " + self.pred_reg + ", " + hex(self.imm)
+                return " " + self.opcode + " " + self.pred_reg + ", " + str(self.imm)
             
             elif self.imm is not None and self.lc_ec is not None:
-                return self.opcode + " " + self.lc_ec + ", " + hex(self.imm)
+                return " " + self.opcode + " " + self.lc_ec + ", " + str(self.imm)
             
             elif self.dest is not None and len(self.ops) == 1:
-                return self.opcode + " x" + str(self.dest) + ", x" + str(self.ops[0])
+                return " " + self.opcode + " x" + str(self.dest) + ", x" + str(self.ops[0])
             
             elif self.dest is not None and self.imm is not None:
-                return self.opcode + " x" + str(self.dest) + ", " + hex(self.imm)
+                return " " + self.opcode + " x" + str(self.dest) + ", " + str(self.imm)
             
             raise ValueError("Invalid mov instruction format.")
         
         elif self.opcode in ("ld"):
             if self.imm is not None:
-                mem_str = hex(self.imm) + "(x" + str(self.ops[0]) + ")"
-                return self.opcode + " x" + str(self.dest) + ", " + mem_str
+                mem_str = str(self.imm) + "(x" + str(self.ops[0]) + ")"
+                return " " + self.opcode + " x" + str(self.dest) + ", " + mem_str
             raise ValueError("Invalid load instruction format.")
             
         elif self.opcode in ("st"):
             if self.imm is not None:
-                mem_str = hex(self.imm) + "(x" + str(self.ops[1]) + ")"
-                return self.opcode + " x" + str(self.ops[0]) + ", " + mem_str
+                mem_str = str(self.imm) + "(x" + str(self.ops[1]) + ")"
+                return " " + self.opcode + " x" + str(self.ops[0]) + ", " + mem_str
             raise ValueError("Invalid store instruction format.")
         
         elif self.opcode in ("loop", "loop.pip"):
             if self.branch is not None:
-                return self.opcode + " " + hex(self.branch)
+                return " " + self.opcode + " " + str(self.branch)
             raise ValueError("Branch target must be provided for loop instructions.")
         else:
             raise ValueError("Unknown opcode.")
@@ -218,7 +218,7 @@ class InputInstructions:
                 "Memory address must be provided for load/store instructions."
             )
 
-            ops = [mem_reg] if info["opcode"] == "ld" else [mem_reg] + regs
+            ops = [mem_reg] if info["opcode"] == "ld" else regs + [int(mem_reg)]
             dest = regs[0] if info["opcode"] == "ld" else None
 
             return Instruction(
