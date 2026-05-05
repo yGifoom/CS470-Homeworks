@@ -59,7 +59,7 @@ def main() -> None:
     # 1.3 increase II until schedulable
 
     # 1.4 dispatch to registers
-    # schedule = rename(dep_table, input_instructions, schedule)
+    schedule = rename(dep_table, input_instructions, schedule)
 
     # TODO: 1.x4 pip dispatch
 

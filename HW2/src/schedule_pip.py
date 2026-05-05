@@ -208,112 +208,113 @@ def attempt_pip_schedule(
     # will in practice be executed for every stage, but will not be there at the end of
     # BB1 in the output format (unless we only have 1 stage).
 
-    # Schedule BB1 instructions.
-    # We don't handle the loop instruction in here
-    print("> BB1")
-    for i in range(bbs[1], bbs[2]):
-        instr: Instruction = instructions[i]
-        deps: DependancyTableRow = dep_table[i]
-        assert deps.instr == i
-
-        print(f"== processing instr {i}, {instr.to_string()} ==")
-
-        new_pc: int = loop_start_pc
-
-        for _, depped_instr_idx in deps.local_dep:
-            # Producer is instruction before us in BB1, simple.
-            depped_instr: Instruction = instructions[depped_instr_idx]
-            new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
-
-        for _, depped_instr_idx in deps.loop_invariant_dep:
-            # Producer is instruction in BB0, simple.
-            depped_instr: Instruction = instructions[depped_instr_idx]
-            new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
-
-        for _, depped_instr_idx in deps.interloop_dep:
-            # Interloop dependency means the producer is either in BB0 or in
-            # the previous iteration of BB1 (possibly after us in the body).
-            # Here we check only the former case, and the latter we check after
-            # everything has been scheduled.
-
-            if depped_instr_idx < bbs[1]:
-                depped_instr: Instruction = instructions[depped_instr_idx]
-                new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
-
-        # BB1 instructions don't have post loop dependencies.
-
-        ok = put_instr_in_pip_schedule(instr, new_pc, occupied_dict, stage_occupied_dict, loop_start_pc, ii_attempt)
-        # Couldn't fit it in.
-        if not ok:
-            return [], False
-
-    # Now we schedule the `loop` instruction.
-    # 1. Find the loop instruction.
-    loop_instr: Instruction | None = None
-    for instr in instructions:
-        if instr.branch is not None:
-            assert loop_instr is None, "multiple loops?"
-            loop_instr = instr
-
-    if loop_instr is not None:
-        # We do indeed have a loop.
-
-        # 2. Fix its target
-        assert loop_instr.branch is not None
-        loop_instr.branch = instructions[loop_instr.branch].new_pc
-
-        # 3. Move it to the appropriate place using the II
-        loop_place = loop_instr.branch + ii_attempt - 1
-        # The loop will always fit because it's the only branching instruction
-        put_instr_in_schedule(loop_instr, occupied_dict, loop_place)
-
-        # Start of BB2 must be after the end of the stage that the last instruction is in
-        highest_stage: int = 0
-        for x, _, _ in stage_occupied_dict:
-            highest_stage = max(highest_stage, x)
-        
-        epilog_start: int = loop_start_pc + (highest_stage + 1) * ii_attempt
-
-        # Schedule BB2 instructions
-        assert len(instructions) == bbs[3]
-        print("> BB2")
-        for i in range(bbs[2] + 1, bbs[3]):
+    if len(bbs) > 2:
+        # Schedule BB1 instructions.
+        # We don't handle the loop instruction in here
+        print("> BB1")
+        for i in range(bbs[1], bbs[2]):
             instr: Instruction = instructions[i]
             deps: DependancyTableRow = dep_table[i]
             assert deps.instr == i
 
             print(f"== processing instr {i}, {instr.to_string()} ==")
 
-            new_pc: int = epilog_start
-
-            # We don't have inter-loop deps here.
+            new_pc: int = loop_start_pc
 
             for _, depped_instr_idx in deps.local_dep:
+                # Producer is instruction before us in BB1, simple.
                 depped_instr: Instruction = instructions[depped_instr_idx]
                 new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
 
             for _, depped_instr_idx in deps.loop_invariant_dep:
+                # Producer is instruction in BB0, simple.
                 depped_instr: Instruction = instructions[depped_instr_idx]
                 new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
 
-            for _, depped_instr_idx in deps.post_loop_dep:
-                depped_instr: Instruction = instructions[depped_instr_idx]
-                new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+            for _, depped_instr_idx in deps.interloop_dep:
+                # Interloop dependency means the producer is either in BB0 or in
+                # the previous iteration of BB1 (possibly after us in the body).
+                # Here we check only the former case, and the latter we check after
+                # everything has been scheduled.
 
-            put_instr_in_schedule(instr, occupied_dict, new_pc)
+                if depped_instr_idx < bbs[1]:
+                    depped_instr: Instruction = instructions[depped_instr_idx]
+                    new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
 
-        # We don't check that instructions are after loop, because we make as many stages
-        # as we need.
+            # BB1 instructions don't have post loop dependencies.
 
-    # Now we check equation 2, i.e. if all inter-loop deps are valid.
-    for i in range(len(instructions)):
-        for _, depped_instr_idx in dep_table[i].interloop_dep:
-            depped_instr: Instruction = instructions[depped_instr_idx]
-            if (
-                depped_instr.new_pc + depped_instr.latency
-                > instructions[i].new_pc + ii_attempt
-            ):
+            ok = put_instr_in_pip_schedule(instr, new_pc, occupied_dict, stage_occupied_dict, loop_start_pc, ii_attempt)
+            # Couldn't fit it in.
+            if not ok:
                 return [], False
+
+        # Now we schedule the `loop` instruction.
+        # 1. Find the loop instruction.
+        loop_instr: Instruction | None = None
+        for instr in instructions:
+            if instr.branch is not None:
+                assert loop_instr is None, "multiple loops?"
+                loop_instr = instr
+
+        if loop_instr is not None:
+            # We do indeed have a loop.
+
+            # 2. Fix its target
+            assert loop_instr.branch is not None
+            loop_instr.branch = instructions[loop_instr.branch].new_pc
+
+            # 3. Move it to the appropriate place using the II
+            loop_place = loop_instr.branch + ii_attempt - 1
+            # The loop will always fit because it's the only branching instruction
+            put_instr_in_schedule(loop_instr, occupied_dict, loop_place)
+
+            # Start of BB2 must be after the end of the stage that the last instruction is in
+            highest_stage: int = 0
+            for x, _, _ in stage_occupied_dict:
+                highest_stage = max(highest_stage, x)
+        
+            epilog_start: int = loop_start_pc + (highest_stage + 1) * ii_attempt
+
+            # Schedule BB2 instructions
+            assert len(instructions) == bbs[3]
+            print("> BB2")
+            for i in range(bbs[2] + 1, bbs[3]):
+                instr: Instruction = instructions[i]
+                deps: DependancyTableRow = dep_table[i]
+                assert deps.instr == i
+
+                print(f"== processing instr {i}, {instr.to_string()} ==")
+
+                new_pc: int = epilog_start
+
+                # We don't have inter-loop deps here.
+
+                for _, depped_instr_idx in deps.local_dep:
+                    depped_instr: Instruction = instructions[depped_instr_idx]
+                    new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+
+                for _, depped_instr_idx in deps.loop_invariant_dep:
+                    depped_instr: Instruction = instructions[depped_instr_idx]
+                    new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+
+                for _, depped_instr_idx in deps.post_loop_dep:
+                    depped_instr: Instruction = instructions[depped_instr_idx]
+                    new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+
+                put_instr_in_schedule(instr, occupied_dict, new_pc)
+
+            # We don't check that instructions are after loop, because we make as many stages
+            # as we need.
+
+        # Now we check equation 2, i.e. if all inter-loop deps are valid.
+        for i in range(len(instructions)):
+            for _, depped_instr_idx in dep_table[i].interloop_dep:
+                depped_instr: Instruction = instructions[depped_instr_idx]
+                if (
+                    depped_instr.new_pc + depped_instr.latency
+                    > instructions[i].new_pc + ii_attempt
+                ):
+                    return [], False
 
     # Okay, we have a working schedule, let's transform it into the appropriate datastructure.
     highest_pc: int = -1
