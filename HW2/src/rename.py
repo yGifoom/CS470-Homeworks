@@ -115,6 +115,7 @@ def rename(
             earliest_bundle  = input_instructions.instructions[bb1_producer_pc].new_pc + input_instructions.instructions[bb1_producer_pc].latency
             
             if earliest_bundle > loop_end + n_new_bundles: # extend the bb1 
+                
                 schedule.insert(earliest_bundle, (mov_instr, get_nop(), get_nop(), get_nop(), get_nop()))
                 n_new_bundles += 1
                 
@@ -134,6 +135,7 @@ def rename(
         # reposition the loop instruction so it is at the end of the last bundle of the loop 
         loop_instr = schedule[loop_end][4]
         schedule = insert_instr(loop_end + n_new_bundles, 4, loop_instr, schedule)
+        schedule = insert_instr(loop_end, 4, get_nop(), schedule) # replace old loop instruction with nop
     
     return schedule
 
