@@ -86,7 +86,11 @@ def rename(
                 op_substituted = False # we use this variable in 2.2 to assign unused registers
                 
                 #2.1 find the first producer (in pc order) of that operand's register and substitute it
-                for reg, producer_pc in instr_deps:
+                for j, (reg, producer_pc) in enumerate(instr_deps):
+                    
+                    if j + 1 < len(instr_deps):
+                        if instr_deps[j + 1][1] < input_instructions.bbs[1]:
+                            continue # next producer is in bb0, we want to pick it
                     
                     new_destination = input_instructions.instructions[producer_pc].dest
                     if new_destination is not None: # for static typechecking
