@@ -15,7 +15,7 @@ class DependancyTableRow:
 
 
 def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTableRow]:
-    print("==> building dep table <==")
+    print("\n==> building dep table <==\n")
     
     bbs: list[int] = instruction_list.bbs
     inst: list[Instruction] = instruction_list.instructions

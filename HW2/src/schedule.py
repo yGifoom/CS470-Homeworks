@@ -32,7 +32,7 @@ def put_instr_in_schedule(instr: Instruction, occupied_dict: dict[tuple[int, int
 
         if bundle_idx == -1:
             # no free slots in this bundle, go for the next one
-            print("no free slost!")
+            print("no free slots!")
             new_pc += 1
     
     occupied_dict[(new_pc, bundle_idx)] = True
@@ -49,6 +49,8 @@ def attempt_normal_schedule(
     """
     Returns (schedule, True) if we managed to make a schedule with the given II.
     """
+    print(f"\n==> attempt normal schedule (ii: {ii_attempt}) <==\n")
+
     instructions: list[Instruction] = input_instructions.instructions
     # REMINDER: [bbs[0], bbs[1]) is the pre-loop bb, [bbs[1], bbs[2]] is the loop bb,
     #           [bbs[2] + 1, bbs[3]) is the post-loop bb
@@ -176,6 +178,8 @@ def attempt_normal_schedule(
             for _, depped_instr_idx in deps.post_loop_dep:
                 depped_instr: Instruction = instructions[depped_instr_idx]
                 new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+
+            put_instr_in_schedule(instr, occupied_dict, new_pc)
         
 
     # Now we check equation 2, i.e. if all inter-loop deps are valid.
@@ -195,7 +199,6 @@ def attempt_normal_schedule(
         print("instr: ", instr.to_string(), " @ ", instr.new_pc, instr.bundle_idx)
     print("==== ======================== ====")
 
-    
     schedule: list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]] = []
     for i in range(highest_pc + 1):
         nop = get_nop()
