@@ -9,6 +9,7 @@ from src.dep_table import build_dep_table
 from src.dep_table import DependancyTableRow
 from src.schedule import normal_schedule
 from src.schedule import pip_schedule
+from src.rename import rename
 
 
 def main() -> None:
@@ -58,6 +59,7 @@ def main() -> None:
     # 1.3 increase II until schedulable
 
     # 1.4 dispatch to registers
+    schedule = rename(dep_table, input_instructions, schedule)
 
     # TODO: 1.x4 pip dispatch
 
