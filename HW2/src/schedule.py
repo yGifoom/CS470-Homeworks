@@ -2,6 +2,7 @@ from .instructions import InputInstructions
 from .instructions import Instruction
 from .instructions import get_nop
 from .dep_table import DependancyTableRow
+import copy
 
 
 def put_instr_in_schedule(instr: Instruction, occupied_dict: dict[tuple[int, int], bool], new_pc: int):
@@ -149,7 +150,10 @@ def attempt_normal_schedule(
         
         # 2. Fix its target
         assert loop_instr.branch is not None
+        print("branching to: ", instructions[loop_instr.branch].to_string())
+        print("with pc: ", instructions[loop_instr.branch].new_pc)
         loop_instr.branch = instructions[loop_instr.branch].new_pc
+        print("so loop at: ", loop_instr.branch + ii_attempt)
 
         # 3. Move it to the appropriate place using the II
         put_instr_in_schedule(loop_instr, occupied_dict, loop_instr.branch + ii_attempt)
@@ -236,34 +240,9 @@ def normal_schedule(
     schedule = []
     ii: int = initial_ii
     while not ok:
-        schedule, ok = attempt_normal_schedule(input_instructions, dep_table, ii)
+        instr_copy = copy.deepcopy(input_instructions)
+        schedule, ok = attempt_normal_schedule(instr_copy, dep_table, ii)
         ii += 1
 
     return schedule
 
-
-def attempt_pip_schedule(
-    input_instructions: InputInstructions,
-    dep_table: list[DependancyTableRow],
-    ii_attempt: int,
-) -> tuple[
-    list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]], bool
-]:
-    """
-    Returns (schedule, True) if we managed to make a schedule with the given II.
-    """
-    return [], True
-
-def pip_schedule(
-    input_instructions: InputInstructions,
-    dep_table: list[DependancyTableRow],
-    initial_ii: int,
-) -> list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]]:
-    ok: bool = False
-    schedule = []
-    ii: int = initial_ii
-    while not ok:
-        schedule, ok = attempt_pip_schedule(input_instructions, dep_table, ii)
-        ii += 1
-
-    return schedule
