@@ -17,7 +17,7 @@ def rename(
     # == Section 3.3.1 Register Allocation with the loop Instruction ==
     # step 0: save all old destination and calculate mov instructions addresses
     jump_pc: int = input_instructions.bbs[1]  # pc of loop jump instruction
-    mov_instr_pcs: list[tuple[int, int]] = []  # [bb1 producer pc] = bb0 producer pc
+    mov_instr_pcs: list[tuple[int, int]] = []  # (bb1 producer pc,  bb0 producer pc)
     
     bb0_destinations: dict[int, int] = dict() # reg -> original_pc of instruction producing it in bb0
     for instr_tuple in schedule:
@@ -102,35 +102,39 @@ def rename(
             
     # step 3: insert mov instructions for loop invariant values at the beginning of the loop
     if len(input_instructions.bbs) > 2:  # if there is a loop
-        #RMK: change with integration with schedule maybe? right now is pretty ugly
+
         for i, instr_tuple in enumerate(schedule):
-            if instr_tuple[4] != get_nop():
+            if instr_tuple[4].opcode != "nop":
                 loop_end = i
                 break
         
-        # is the first alu or the second alu slot free in the last bundle of the loop? 
-        free_last_0 = schedule[loop_end][0] == get_nop()
-        free_last_1 = schedule[loop_end][1] == get_nop()
-        
         n_new_bundles = 0
-        for mov_instr in movs:
-            if free_last_0:
-                schedule = insert_instr(loop_end + n_new_bundles, 0, mov_instr, schedule)
-                continue
-            elif free_last_1:
-                schedule = insert_instr(loop_end + n_new_bundles, 1, mov_instr, schedule)
-                continue
+        for i, mov_instr in enumerate(movs): # movs and mov_instr_pcs have mov operations in same order
+            # calculate earliest bundle idx from producer in loop
+            bb1_producer_pc = mov_instr_pcs[i][0]
+            earliest_bundle  = input_instructions.instructions[bb1_producer_pc].new_pc + input_instructions.instructions[bb1_producer_pc].latency
             
-            schedule.insert(loop_end + n_new_bundles, (mov_instr, get_nop(), get_nop(), get_nop(), get_nop()))
-            n_new_bundles += 1
-            free_last_1 = True  # after inserting a mov, we know for sure that the last bundle has a free slot for the next mov
+            if earliest_bundle > loop_end + n_new_bundles: # extend the bb1 
+                schedule.insert(earliest_bundle, (mov_instr, get_nop(), get_nop(), get_nop(), get_nop()))
+                n_new_bundles += 1
+                
+            if earliest_bundle < loop_end + n_new_bundles: # can insert mov in current bb1 size, unless occupancy forces us to insert later
+                earliest_bundle = loop_end + n_new_bundles
+
+                print(f"inserting mov {mov_instr.to_string()} at earliest bundle {earliest_bundle}, depends on instr at pc {bb1_producer_pc} with new pc {input_instructions.instructions[bb1_producer_pc].new_pc}")
+
+                if schedule[earliest_bundle][0].opcode == "nop":
+                    schedule = insert_instr(earliest_bundle, 0, mov_instr, schedule)
+                elif schedule[earliest_bundle][1].opcode == "nop":
+                    schedule = insert_instr(earliest_bundle, 1, mov_instr, schedule)
+                else: # have to insert new bundle and move loop instruction down
+                    schedule.insert(earliest_bundle, (mov_instr, get_nop(), get_nop(), get_nop(), get_nop()))
+                    n_new_bundles += 1
     
         # reposition the loop instruction so it is at the end of the last bundle of the loop 
-        loop_instr = schedule[loop_end + n_new_bundles][4]
+        loop_instr = schedule[loop_end][4]
         schedule = insert_instr(loop_end + n_new_bundles, 4, loop_instr, schedule)
-        schedule = insert_instr(loop_end, 4, get_nop(), schedule)
     
-         
     return schedule
 
 def insert_instr(bundle_idx: int, slot_idx: int, instr: Instruction, schedule: list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]]) -> list[
@@ -147,11 +151,9 @@ def insert_instr(bundle_idx: int, slot_idx: int, instr: Instruction, schedule: l
     Returns:
         list[ tuple[Instruction, Instruction, Instruction, Instruction, Instruction] ]: _description_
     """
-    
-    new_bundle = tuple(old_inst if i != slot_idx else instr for i, old_inst in enumerate(schedule[bundle_idx]))
-    assert len(new_bundle) == 5
-    
-    schedule.insert(bundle_idx, new_bundle)
+    new_bundle = list(schedule[bundle_idx])
+    new_bundle[slot_idx] = instr
+    schedule[bundle_idx] = tuple(new_bundle) #type: ignore
     return schedule
 
 def rename_pip(schedule: list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]]) -> list[

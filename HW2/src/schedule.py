@@ -241,6 +241,9 @@ def normal_schedule(
         instr_copy = copy.deepcopy(input_instructions)
         schedule, ok = attempt_normal_schedule(instr_copy, dep_table, ii)
         ii += 1
+        if ok:
+            input_instructions.instructions = instr_copy.instructions
+            
 
     return schedule
 
