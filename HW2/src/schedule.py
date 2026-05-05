@@ -33,7 +33,7 @@ def put_instr_in_schedule(instr: Instruction, occupied_dict: dict[tuple[int, int
 
         if bundle_idx == -1:
             # no free slots in this bundle, go for the next one
-            print("no free slots!")
+            print("no free slots! normal")
             new_pc += 1
     
     occupied_dict[(new_pc, bundle_idx)] = True

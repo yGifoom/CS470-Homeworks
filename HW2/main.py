@@ -17,6 +17,8 @@ def main() -> None:
     output_filename: str = sys.argv[2]
     output_filename_pip: str = sys.argv[3]
 
+    print(f"\n\n <========= TEST CASE {input_filename} =============>\n\n")
+    
     with open(input_filename) as infile:
         input_data = infile.read()
 
@@ -27,12 +29,12 @@ def main() -> None:
     input_instructions: InputInstructions = InputInstructions(json.loads(input_data))
 
     # 1.1 lowerbound II
-    II = max(
+    II = max(max(
         [
             ceil(input_instructions.Ni[stage] / input_instructions.Ui[stage])
             for stage in input_instructions.Ni.keys()
         ]
-    )
+    ) - 1, 1)
 
     # 1.2 make dependency table
     dep_table: list[DependancyTableRow] = build_dep_table(input_instructions)

@@ -3,14 +3,19 @@ from .instructions import Instruction
 from .instructions import get_nop
 from .dep_table import DependancyTableRow
 import copy
+from time import sleep
 
 
 def check_has_space_bundle(stage_occupied_dict: dict[tuple[int, int, int], bool], bundle_idx: int, ii: int) -> bool:
     for instage_idx in range(ii):
+        instage_good: bool = True
         for stage in range(1000):
             is_full: bool = stage_occupied_dict.get((stage, instage_idx, bundle_idx), False)
-            if not is_full:
-                return True
+            if is_full:
+                instage_good = False
+                break
+        if instage_good:
+            return True
     return False
 
 def check_has_space(opcode: str, stage_occupied_dict: dict[tuple[int, int, int], bool], ii: int) -> bool:
@@ -89,7 +94,7 @@ def put_instr_in_pip_schedule(
 
         if bundle_idx == -1:
             # no free slots in this bundle, go for the next one
-            print("no free slots!")
+            print("no free slots! pip")
             new_pc += 1
     
     # FIXME: i'm kinda ignoring the bubbling problem and calculating stages this way
