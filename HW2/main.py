@@ -8,7 +8,7 @@ from src.instructions import Instruction
 from src.dep_table import build_dep_table
 from src.dep_table import DependancyTableRow
 from src.schedule import normal_schedule
-from src.schedule import pip_schedule
+from src.schedule_pip import pip_schedule
 from src.rename import rename
 
 

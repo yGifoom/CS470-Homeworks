@@ -41,7 +41,7 @@ def put_instr_in_schedule(instr: Instruction, occupied_dict: dict[tuple[int, int
     print(f"    saved to {new_pc}, {bundle_idx}")
     instr.bundle_idx = bundle_idx
 
-def attempt_normal_schedule(
+def attempt_pip_schedule(
     input_instructions: InputInstructions,
     dep_table: list[DependancyTableRow],
     ii_attempt: int,
@@ -51,7 +51,7 @@ def attempt_normal_schedule(
     """
     Returns (schedule, True) if we managed to make a schedule with the given II.
     """
-    print(f"\n==> attempt normal schedule (ii: {ii_attempt}) <==\n")
+    print(f"\n==> attempt pip schedule (ii: {ii_attempt}) <==\n")
 
     instructions: list[Instruction] = input_instructions.instructions
     # REMINDER: [bbs[0], bbs[1]) is the pre-loop bb, [bbs[1], bbs[2]] is the loop bb,
@@ -61,10 +61,15 @@ def attempt_normal_schedule(
 
     # if in the schedule (pc, executinon unit index) is occupied
     occupied_dict: dict[tuple[int, int], bool] = {}
+    # `S` as described in section 3.2.2.
+    stage_occupied_dict: dict[tuple[int, int, int], bool] = {}
 
-    # Since we're not doing software pipelining, the initiation interval is literarly the
-    # size of BB1 (the loop body) in cycles (=bundles).
-    
+    # The output format is going to be what is described in the picture in
+    # Figure 11 b).
+
+    # The initiation interval is the size of a stage. When you occupy something in a stage,
+    # it is occupied in all stages.
+
     # First, schedule all pre-loop instructions (BB0)
     assert 0 == bbs[0]
     print("> BB0")
@@ -97,9 +102,9 @@ def attempt_normal_schedule(
         loop_start_pc = max(loop_start_pc, instructions[i].new_pc)
     loop_start_pc += 1
 
-    # The loop instruction is the end of BB1 i.e. the end of the loop body
-    # it will be at `ii_attempt` + (first instruction in loop body) - 1
-    # The first instruction in loop body will be at >= `loop_start_pc`.
+    # The loop instruction is at `ii_attempt` + (first instruction in loop body) - 1 and
+    # will in practice be executed for every stage, but will not be there at the end of
+    # BB1 in the output format (unless we only have 1 stage).
 
     # Schedule BB1 instructions.
     # We don't handle the loop instruction in here
@@ -227,20 +232,17 @@ def attempt_normal_schedule(
     return schedule, True
 
 
-def normal_schedule(
+def pip_schedule(
     input_instructions: InputInstructions,
     dep_table: list[DependancyTableRow],
     initial_ii: int,
 ) -> list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]]:
-    # == Section 3.2. & 3.2.1 Scheduling with the loop Instruction ==
-
     ok: bool = False
     schedule = []
     ii: int = initial_ii
     while not ok:
         instr_copy = copy.deepcopy(input_instructions)
-        schedule, ok = attempt_normal_schedule(instr_copy, dep_table, ii)
+        schedule, ok = attempt_pip_schedule(instr_copy, dep_table, ii)
         ii += 1
 
     return schedule
-
