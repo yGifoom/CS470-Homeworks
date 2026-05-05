@@ -180,7 +180,7 @@ def attempt_normal_schedule(
                 new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
 
             put_instr_in_schedule(instr, occupied_dict, new_pc)
-        
+
 
     # Now we check equation 2, i.e. if all inter-loop deps are valid.
     for i in range(len(instructions)):
