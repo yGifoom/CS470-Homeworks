@@ -1,5 +1,9 @@
 HW1/given_tests/*
 HW2/given_tests/*
+HW2/00/pip.json
+HW2/00/simple.json
+HW2/00/out.json
+HW2/00/out_pip.json
 *.zip
 
 HW1/__pycache__/ 
