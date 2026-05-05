@@ -88,7 +88,7 @@ def rename(
                 #2.1 find the first producer (in pc order) of that operand's register and substitute it
                 for reg, producer_pc in instr_deps:
                     
-                    new_destination = dep_table[producer_pc].dest
+                    new_destination = input_instructions.instructions[producer_pc].dest
                     if new_destination is not None: # for static typechecking
                         if reg == op:
                             instr.ops[i] = new_destination
