@@ -136,9 +136,28 @@ def normal_schedule(
     return schedule
 
 
+def attempt_pip_schedule(
+    input_instructions: InputInstructions,
+    dep_table: list[DependancyTableRow],
+    ii_attempt: int,
+) -> tuple[
+    list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]], bool
+]:
+    """
+    Returns (schedule, True) if we managed to make a schedule with the given II.
+    """
+    return [], False
+
 def pip_schedule(
     input_instructions: InputInstructions,
     dep_table: list[DependancyTableRow],
     initial_ii: int,
 ) -> list[tuple[Instruction, Instruction, Instruction, Instruction, Instruction]]:
-    return []
+    ok: bool = False
+    schedule = []
+    ii: int = initial_ii
+    while not ok:
+        schedule, ok = attempt_pip_schedule(input_instructions, dep_table, ii)
+        ii += 1
+
+    return schedule
