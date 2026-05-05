@@ -4,6 +4,41 @@ from .instructions import get_nop
 from .dep_table import DependancyTableRow
 
 
+def put_instr_in_schedule(instr: Instruction, occupied_dict: dict[tuple[int, int], bool], new_pc: int):
+    bundle_idx: int = -1
+
+    while bundle_idx == -1:
+        if instr.opcode in ("add", "addi", "sub", "mov"):
+            # ALU 1
+            if not occupied_dict.get((new_pc, 0), False):
+                bundle_idx = 0
+            # ALU 2
+            elif not occupied_dict.get((new_pc, 1), False):
+                bundle_idx = 1
+        elif instr.opcode == "mulu":
+            # Mult
+            if not occupied_dict.get((new_pc, 2), False):
+                bundle_idx = 2
+        elif instr.opcode in ("ld", "st"):
+            # Mem
+            if not occupied_dict.get((new_pc, 3), False):
+                bundle_idx = 3
+        elif instr.opcode in ("loop", "loop.pip"):
+            # Branch
+            if not occupied_dict.get((new_pc, 4), False):
+                bundle_idx = 4
+        else:
+            raise AssertionError("unknown opcode")
+
+        if bundle_idx == -1:
+            # no free slots in this bundle, go for the next one
+            print("no free slost!")
+            new_pc += 1
+    
+    occupied_dict[(new_pc, bundle_idx)] = True
+    instr.new_pc = new_pc
+    instr.bundle_idx = bundle_idx
+
 def attempt_normal_schedule(
     input_instructions: InputInstructions,
     dep_table: list[DependancyTableRow],
@@ -15,19 +50,30 @@ def attempt_normal_schedule(
     Returns (schedule, True) if we managed to make a schedule with the given II.
     """
     instructions: list[Instruction] = input_instructions.instructions
+    # REMINDER: [bbs[0], bbs[1]) is the pre-loop bb, [bbs[1], bbs[2]] is the loop bb,
+    #           [bbs[2] + 1, bbs[3]) is the post-loop bb
+    bbs: list[int] = input_instructions.bbs
+    print(f"bbs: {bbs}")
 
     # if in the schedule (pc, executinon unit index) is occupied
     occupied_dict: dict[tuple[int, int], bool] = {}
 
-    for i in range(len(instructions)):
+    # Since we're not doing software pipelining, the initiation interval is literarly the
+    # size of BB1 (the loop body) in cycles (=bundles).
+    
+    # First, schedule all pre-loop instructions (BB0)
+    assert 0 == bbs[0]
+    for i in range(0, bbs[1]):
         instr: Instruction = instructions[i]
         deps: DependancyTableRow = dep_table[i]
         assert deps.instr == i
 
-        print(f"processing instr {i}, {instr.to_string()}")
+        print(f"== processing instr {i}, {instr.to_string()} ==")
 
         new_pc: int = 0
 
+        # We can only encounter local dependencies and (maybe? loop invariant dependencies) here.
+        
         for _, depped_instr_idx in deps.local_dep:
             # `instr` uses operand `_`, which is produced by instruction at index `depped_instr_idx`
             depped_instr: Instruction = instructions[depped_instr_idx]
@@ -37,65 +83,113 @@ def attempt_normal_schedule(
             depped_instr: Instruction = instructions[depped_instr_idx]
             new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
 
-        for _, depped_instr_idx in deps.post_loop_dep:
+        put_instr_in_schedule(instr, occupied_dict, new_pc)
+
+    # Calculate the earliest the loop body can start, is one instruction after the last
+    # instruction in BB0.
+    loop_start_pc: int = 0
+    for i in range(0, bbs[1]):
+        loop_start_pc = max(loop_start_pc, instructions[i].new_pc)
+    loop_start_pc += 1
+
+    # The loop instruction is the end of BB1 i.e. the end of the loop body
+    # it will be at `ii_attempt` + (first instruction in loop body)
+    # The first instruction in loop body will be at >= `loop_start_pc`.
+
+    # Schedule BB1 instructions.
+    # We don't handle the loop instruction in here
+    for i in range(bbs[1], bbs[2]):
+        instr: Instruction = instructions[i]
+        deps: DependancyTableRow = dep_table[i]
+        assert deps.instr == i
+
+        print(f"== processing instr {i}, {instr.to_string()} ==")
+
+        new_pc: int = loop_start_pc
+
+        for _, depped_instr_idx in deps.local_dep:
+            # Producer is instruction before us in BB1, simple.
+            depped_instr: Instruction = instructions[depped_instr_idx]
+            new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+
+        for _, depped_instr_idx in deps.loop_invariant_dep:
+            # Producer is instruction in BB0, simple.
             depped_instr: Instruction = instructions[depped_instr_idx]
             new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
 
         for _, depped_instr_idx in deps.interloop_dep:
-            # This is kinda confusing to me, but let's just try to do what the doc says directly
-            depped_instr: Instruction = instructions[depped_instr_idx]
-            if depped_instr.new_pc + depped_instr.latency > new_pc + ii_attempt:
-                return [], False
+            # Interloop dependency means the producer is either in BB0 or in
+            # the previous iteration of BB1 (possibly after us in the body).
+            # Here we check only the former case, and the latter we check after
+            # everything has been scheduled.
 
-        bundle_idx: int = -1
+            if depped_instr_idx < bbs[1]:
+                depped_instr: Instruction = instructions[depped_instr_idx]
+                new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
 
-        while bundle_idx == -1:
-            if instr.opcode in ("add", "addi", "sub", "mov"):
-                # ALU 1
-                if not occupied_dict.get((new_pc, 0), False):
-                    bundle_idx = 0
-                # ALU 2
-                elif not occupied_dict.get((new_pc, 1), False):
-                    bundle_idx = 1
-            elif instr.opcode == "mulu":
-                # Mult
-                if not occupied_dict.get((new_pc, 2), False):
-                    bundle_idx = 2
-            elif instr.opcode in ("ld", "st"):
-                # Mem
-                if not occupied_dict.get((new_pc, 3), False):
-                    bundle_idx = 3
-            elif instr.opcode in ("loop", "loop.pip"):
-                # Branch
-                if not occupied_dict.get((new_pc, 4), False):
-                    bundle_idx = 4
-            else:
-                raise AssertionError("unknown opcode")
+        # BB1 instructions don't have post loop dependencies.
 
-            if bundle_idx == -1:
-                # no free slots in this bundle, go for the next one
-                print("no free slost!")
-                new_pc += 1
-            
-        occupied_dict[(new_pc, bundle_idx)] = True
-        instr.new_pc = new_pc
-        instr.bundle_idx = bundle_idx
+        put_instr_in_schedule(instr, occupied_dict, new_pc)
 
-    # There is the "Loop with Bubble." section, but I think we automatically handle this with our
-    # representation.
-
-    # Fix loop targets
+    # Now we schedule the `loop` instruction.
+    # 1. Find the loop instruction.
+    loop_instr: Instruction | None = None
     for instr in instructions:
         if instr.branch is not None:
-            # Set the branch target to the new location of the instruction we were targetting b4
-            instr.branch = instructions[instr.branch].new_pc
+            assert loop_instr is None, "multiple loops?"
+            loop_instr = instr
 
+    if loop_instr is not None:
+        # We do indeed have a loop.
+        
+        # 2. Fix its target
+        assert loop_instr.branch is not None
+        loop_instr.branch = instructions[loop_instr.branch].new_pc
+
+        # 3. Move it to the appropriate place using the II
+        put_instr_in_schedule(loop_instr, occupied_dict, loop_instr.branch + ii_attempt)
+
+        # Start of BB2 must be after the loop instruction
+        epilog_start: int = loop_instr.branch + ii_attempt + 1
+
+        # Schedule BB2 instructions
+        assert len(instructions) == bbs[3]
+        for i in range(bbs[2] + 1, bbs[3]):
+            instr: Instruction = instructions[i]
+            deps: DependancyTableRow = dep_table[i]
+            assert deps.instr == i
+
+            print(f"== processing instr {i}, {instr.to_string()} ==")
+
+            new_pc: int = epilog_start
+
+            # We don't have inter-loop deps here.
+
+            for _, depped_instr_idx in deps.local_dep:
+                depped_instr: Instruction = instructions[depped_instr_idx]
+                new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+
+            for _, depped_instr_idx in deps.loop_invariant_dep:
+                depped_instr: Instruction = instructions[depped_instr_idx]
+                new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+
+            for _, depped_instr_idx in deps.post_loop_dep:
+                depped_instr: Instruction = instructions[depped_instr_idx]
+                new_pc = max(new_pc, depped_instr.new_pc + depped_instr.latency)
+        
+
+    # Now we check equation 2, i.e. if all inter-loop deps are valid.
+    for i in range(len(instructions)):
+        for _, depped_instr_idx in dep_table[i].interloop_dep:
+            depped_instr: Instruction = instructions[depped_instr_idx]
+            if depped_instr.new_pc + depped_instr.latency > instructions[i].new_pc + ii_attempt:
+                return [], False
+            
     # Okay, we have a working schedule, let's transform it into the appropriate datastructure.
     highest_pc: int = -1
     for instr in instructions:
         highest_pc = max(highest_pc, instr.new_pc)
 
-    
     print("==== normal schedule decision ====")
     for instr in instructions:
         print("instr: ", instr.to_string(), " @ ", instr.new_pc, instr.bundle_idx)
@@ -146,7 +240,7 @@ def attempt_pip_schedule(
     """
     Returns (schedule, True) if we managed to make a schedule with the given II.
     """
-    return [], False
+    return [], True
 
 def pip_schedule(
     input_instructions: InputInstructions,

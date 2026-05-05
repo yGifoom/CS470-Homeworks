@@ -15,14 +15,17 @@ class DependancyTableRow:
 
 
 def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTableRow]:
+    print("==> building dep table <==")
+    
     bbs: list[int] = instruction_list.bbs
     inst: list[Instruction] = instruction_list.instructions
     table: list[DependancyTableRow] = []
 
-    producers: dict[int, list[int]] = {}  # reg -> list of instr indices that produce it
+    # reg -> list of instr indices that produce it
+    producers: dict[int, list[int]] = {}  
 
     # bb end pc index
-    # REMINDER: [bbs[0], bbs[1]) is the pre-loop bb, [bbs[1], bbs[2]) is the loop bb, [bbs[2], bbs[3]) is the post-loop bb
+    # REMINDER: [bbs[0], bbs[1]) is the pre-loop bb, [bbs[1], bbs[2]] is the loop bb, [bbs[2] + 1, bbs[3]) is the post-loop bb
     bb = 1
 
     for i in range(len(inst)):
@@ -49,7 +52,7 @@ def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTable
         post_loop_dep: list[tuple[int, int]] = []
 
         for op in inst[i].ops:
-            print(bb, i)
+            print(f"bb: {bb}, instr idx: {i}, opcode: {inst[i].opcode}, op: {op}")
             local_dep.extend(
                 [
                     (op, k)
@@ -69,7 +72,7 @@ def build_dep_table(instruction_list: InputInstructions) -> list[DependancyTable
                 if latest_producer_of_op < bbs[1]:
                     loop_invariant_dep.append((op, latest_producer_of_op))
 
-            elif bb == 2:  # if this is not the first bb, also check for loop-carried deps
+            if bb == 2:  # if this is not the first bb, also check for loop-carried deps
                 for k in producers.get(op, list()):
                     if (k >= i and k < bbs[2]) or (k < bbs[1]):
                         if (
