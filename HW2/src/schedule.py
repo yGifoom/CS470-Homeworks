@@ -37,6 +37,7 @@ def put_instr_in_schedule(instr: Instruction, occupied_dict: dict[tuple[int, int
     
     occupied_dict[(new_pc, bundle_idx)] = True
     instr.new_pc = new_pc
+    print(f"    saved to {new_pc}, {bundle_idx}")
     instr.bundle_idx = bundle_idx
 
 def attempt_normal_schedule(
@@ -65,6 +66,7 @@ def attempt_normal_schedule(
     
     # First, schedule all pre-loop instructions (BB0)
     assert 0 == bbs[0]
+    print("> BB0")
     for i in range(0, bbs[1]):
         instr: Instruction = instructions[i]
         deps: DependancyTableRow = dep_table[i]
@@ -100,6 +102,7 @@ def attempt_normal_schedule(
 
     # Schedule BB1 instructions.
     # We don't handle the loop instruction in here
+    print("> BB1")
     for i in range(bbs[1], bbs[2]):
         instr: Instruction = instructions[i]
         deps: DependancyTableRow = dep_table[i]
@@ -152,10 +155,11 @@ def attempt_normal_schedule(
         put_instr_in_schedule(loop_instr, occupied_dict, loop_instr.branch + ii_attempt)
 
         # Start of BB2 must be after the loop instruction
-        epilog_start: int = loop_instr.branch + ii_attempt + 1
+        epilog_start: int = loop_instr.new_pc + 1
 
         # Schedule BB2 instructions
         assert len(instructions) == bbs[3]
+        print("> BB2")
         for i in range(bbs[2] + 1, bbs[3]):
             instr: Instruction = instructions[i]
             deps: DependancyTableRow = dep_table[i]
@@ -181,6 +185,11 @@ def attempt_normal_schedule(
 
             put_instr_in_schedule(instr, occupied_dict, new_pc)
 
+        # We need to check that the loop instruction is not before the last instruction
+        # of the loop body since we don't think about this when selecting the initiation interval.
+        for i in range(bbs[2]):
+            if instructions[i].new_pc > loop_instr.new_pc:
+                return [], False 
 
     # Now we check equation 2, i.e. if all inter-loop deps are valid.
     for i in range(len(instructions)):
